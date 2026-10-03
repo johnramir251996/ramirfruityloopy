@@ -1,0 +1,580 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Pinoy Creator Map</title>
+<meta name="description" content="Claim your city on the map of Filipino creators. Get found by fans and brands near you.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bungee&family=Figtree:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+/* Layout: pixel-art archipelago on the left, city "slot board" on the right; stacks on phones. */
+:root {
+  --bg: #EDF2F3;
+  --surface: #FFFFFF;
+  --ink: #13232A;
+  --muted: #56707A;
+  --line: #D2DDE0;
+  --sea: #D5E5EA;
+  --land: #86AC93;
+  --land-hi: #6E9A7E;
+  --sun: #F2B705;          /* jeepney yellow: claimed share */
+  --sun-ink: #3A2C00;
+  --red: #C8102E;          /* top spot */
+  --blue: #1D47A3;         /* links */
+  --ok: #1E8A5A;
+  --warn-bg: #FFF4D1;
+  --font-display: "Bungee", "Arial Black", Impact, sans-serif;
+  --font-body: "Figtree", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  --font-mono: "IBM Plex Mono", ui-monospace, Menlo, Consolas, monospace;
+  --r: 6px;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #0B161B; --surface: #12232B; --ink: #E5EEF0; --muted: #8DA4AD; --line: #233A44;
+    --sea: #0F2830; --land: #3E6E57; --land-hi: #4F8569; --sun: #F5C431; --sun-ink: #2A1F00;
+    --red: #F0485F; --blue: #8BAEFF; --ok: #4CC38A; --warn-bg: #2E2710; color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #0B161B; --surface: #12232B; --ink: #E5EEF0; --muted: #8DA4AD; --line: #233A44;
+  --sea: #0F2830; --land: #3E6E57; --land-hi: #4F8569; --sun: #F5C431; --sun-ink: #2A1F00;
+  --red: #F0485F; --blue: #8BAEFF; --ok: #4CC38A; --warn-bg: #2E2710; color-scheme: dark;
+}
+
+* { box-sizing: border-box; }
+html, body { background: var(--bg); color: var(--ink); }
+body { font-family: var(--font-body); font-size: 15px; line-height: 1.5; margin: 0; }
+.wrap { max-width: 1180px; margin: 0 auto; padding-inline: 16px; padding-block: 20px 48px; display: grid; gap: 20px; }
+a { color: var(--blue); }
+button, input, select { font: inherit; color: inherit; }
+:focus-visible { outline: 2px solid var(--blue); outline-offset: 2px; }
+
+/* header */
+.top { display: flex; flex-wrap: wrap; align-items: flex-end; justify-content: space-between; gap: 12px 24px; }
+.brand { display: grid; gap: 4px; min-width: 0; }
+.wordmark { font-family: var(--font-display); font-size: clamp(26px, 6vw, 40px); line-height: 1; letter-spacing: .01em; margin: 0; text-wrap: balance; }
+.wordmark span { color: var(--red); }
+.tag { margin: 0; color: var(--muted); max-width: 52ch; }
+.edition { font-family: var(--font-mono); font-size: 11px; letter-spacing: .12em; text-transform: uppercase; color: var(--muted); display: flex; gap: 8px; align-items: center; }
+.mode { border: 1px solid var(--line); border-radius: 99px; padding: 1px 8px; }
+.mode.live { color: var(--ok); border-color: currentColor; }
+.stats { display: flex; gap: 20px; flex-wrap: wrap; }
+.stat { display: grid; }
+.stat b { font-family: var(--font-mono); font-weight: 500; font-size: 22px; font-variant-numeric: tabular-nums; line-height: 1.1; }
+.stat small { color: var(--muted); font-size: 12px; }
+
+/* main grid */
+.main { display: grid; grid-template-columns: minmax(0, 5fr) minmax(0, 6fr); gap: 20px; align-items: start; }
+@media (max-width: 860px) { .main { grid-template-columns: minmax(0, 1fr); } }
+
+.mapcard { background: var(--sea); border-radius: var(--r); position: relative; overflow: hidden; }
+.mapcard svg { display: block; width: 100%; height: auto; max-height: 78vh; }
+@media (min-width: 861px) { .mapcard { position: sticky; top: calc(env(safe-area-inset-top, 0px) + 12px); } }
+.land { fill: var(--land); }
+.pin { cursor: pointer; }
+.pin .track { fill: var(--surface); stroke: var(--line); }
+.pin .arc { fill: none; stroke: var(--sun); stroke-linecap: butt; }
+.pin .core { fill: var(--ink); }
+.pin.sel .halo { stroke: var(--red); stroke-width: 2.5; fill: none; }
+.pin text { font-family: var(--font-mono); font-size: 11px; fill: var(--ink); paint-order: stroke; stroke: var(--sea); stroke-width: 3px; stroke-linejoin: round; font-weight: 500; }
+.pin:hover .track, .pin:focus-visible .track { stroke: var(--ink); }
+.lead { stroke: var(--muted); stroke-width: 1; stroke-dasharray: 2 2; fill: none; }
+.realdot { fill: var(--ink); }
+.maplegend { position: absolute; left: 12px; bottom: 10px; font-family: var(--font-mono); font-size: 11px; color: var(--muted); display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+.maplegend i { display: inline-block; width: 10px; height: 10px; vertical-align: -1px; margin-right: 4px; border-radius: 50%; }
+
+/* city panel */
+.panel { background: var(--surface); border: 1px solid var(--line); border-radius: var(--r); padding: 20px; display: grid; gap: 18px; min-width: 0; scroll-margin-top: 12px; }
+.chead { display: flex; justify-content: space-between; gap: 12px; flex-wrap: wrap; align-items: flex-start; }
+.chead h2 { font-family: var(--font-display); font-weight: 400; font-size: clamp(22px, 4.5vw, 30px); line-height: 1.05; margin: 0; text-wrap: balance; }
+.meta { color: var(--muted); font-size: 13px; }
+.tier { font-family: var(--font-mono); font-size: 11px; letter-spacing: .1em; text-transform: uppercase; border: 1px solid var(--line); border-radius: 4px; padding: 2px 6px; white-space: nowrap; }
+.fill { display: grid; gap: 6px; }
+.bar { height: 10px; border-radius: 2px; background: var(--bg); overflow: hidden; display: flex; }
+.bar .live { background: var(--sun); }
+.bar .held { background: repeating-linear-gradient(45deg, var(--sun) 0 3px, transparent 3px 6px); }
+.fill .row { display: flex; justify-content: space-between; font-size: 13px; color: var(--muted); font-variant-numeric: tabular-nums; gap: 8px; flex-wrap: wrap; }
+
+.top1 { display: grid; grid-template-columns: 88px minmax(0,1fr); gap: 14px; align-items: center; border: 2px solid var(--red); border-radius: var(--r); padding: 12px; background: var(--surface); text-align: left; cursor: pointer; width: 100%; }
+.top1 .lbl { font-family: var(--font-mono); font-size: 11px; letter-spacing: .12em; text-transform: uppercase; color: var(--red); }
+.top1 strong { font-size: 18px; display: block; line-height: 1.2; overflow-wrap: anywhere; }
+.top1 .empty88 { width: 88px; height: 88px; border: 2px dashed var(--red); border-radius: 4px; display: grid; place-items: center; font-family: var(--font-display); color: var(--red); font-size: 28px; }
+
+.slots-h { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; flex-wrap: wrap; }
+.slots-h h3 { margin: 0; font-size: 15px; }
+.slots-h small { color: var(--muted); font-variant-numeric: tabular-nums; }
+.grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(52px, 1fr)); gap: 6px; }
+.slot { aspect-ratio: 1; max-width: 100%; border-radius: 4px; border: 1px dashed var(--line); background: transparent; display: grid; place-items: center; cursor: pointer; font-family: var(--font-mono); font-size: 11px; color: var(--muted); padding: 0; position: relative; }
+.slot:hover { border-color: var(--ink); color: var(--ink); }
+.slot.live { border: 0; font-family: var(--font-display); font-size: 16px; }
+.slot.held { border: 1px solid var(--line); cursor: not-allowed; background: repeating-linear-gradient(45deg, var(--bg) 0 4px, transparent 4px 8px); font-size: 9px; letter-spacing: .05em; text-transform: uppercase; }
+.slot .v { position: absolute; right: 2px; top: 2px; width: 12px; height: 12px; border-radius: 50%; background: var(--surface); color: var(--ok); font-size: 9px; line-height: 12px; text-align: center; font-family: var(--font-body); font-weight: 700; }
+.legend { display: flex; gap: 14px; flex-wrap: wrap; font-size: 12px; color: var(--muted); }
+.legend span { display: inline-flex; gap: 6px; align-items: center; }
+.legend i { width: 14px; height: 14px; border-radius: 3px; display: inline-block; }
+
+/* directory */
+.dir { display: grid; gap: 12px; }
+.dir-h { display: flex; justify-content: space-between; align-items: center; gap: 12px; flex-wrap: wrap; }
+.dir-h h2 { font-family: var(--font-display); font-weight: 400; font-size: 22px; margin: 0; }
+.search { flex: 1 1 220px; max-width: 360px; padding: 9px 12px; border-radius: var(--r); border: 1px solid var(--line); background: var(--surface); }
+.chips { display: flex; gap: 6px; flex-wrap: wrap; }
+.chip { border: 1px solid var(--line); background: var(--surface); border-radius: 99px; padding: 4px 12px; cursor: pointer; font-size: 13px; }
+.chip[aria-pressed="true"] { background: var(--ink); color: var(--bg); border-color: var(--ink); }
+.list { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 260px), 1fr)); gap: 8px; }
+.crow { display: grid; grid-template-columns: 44px minmax(0,1fr); gap: 12px; align-items: center; text-align: left; background: var(--surface); border: 1px solid var(--line); border-radius: var(--r); padding: 10px; cursor: pointer; width: 100%; }
+.crow:hover { border-color: var(--ink); }
+.crow b { display: block; overflow-wrap: anywhere; font-weight: 600; }
+.crow small { color: var(--muted); }
+.av { width: 100%; aspect-ratio: 1; border-radius: 4px; display: grid; place-items: center; font-family: var(--font-display); }
+.demo { font-family: var(--font-mono); font-size: 10px; letter-spacing: .08em; color: var(--muted); border: 1px solid var(--line); border-radius: 3px; padding: 0 4px; margin-left: 6px; vertical-align: 2px; }
+.empty { color: var(--muted); padding: 12px 0; }
+
+footer { color: var(--muted); font-size: 12px; display: grid; gap: 4px; }
+
+/* sheet */
+.scrim { position: fixed; inset: 0; background: rgba(5, 14, 18, .5); display: grid; align-items: end; justify-items: center; z-index: 50; }
+@media (min-width: 700px) { .scrim { align-items: center; } }
+.sheet { background: var(--surface); width: min(520px, 100%); max-height: 92vh; overflow: auto; border-radius: 14px 14px 0 0; padding: 20px 20px calc(20px + env(safe-area-inset-bottom, 0px)); display: grid; gap: 14px; }
+@media (min-width: 700px) { .sheet { border-radius: 12px; } }
+.sheet-h { display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; }
+.sheet-h h3 { margin: 0; font-size: 19px; line-height: 1.25; overflow-wrap: anywhere; }
+.x { border: 0; background: var(--bg); width: 34px; height: 34px; border-radius: 50%; cursor: pointer; flex: none; font-size: 18px; line-height: 1; }
+.profile { display: grid; grid-template-columns: 96px minmax(0,1fr); gap: 16px; align-items: center; }
+.profile .av { font-size: 30px; }
+.badge { color: var(--ok); font-size: 13px; font-weight: 600; }
+.links { display: flex; gap: 8px; flex-wrap: wrap; }
+.btn { border: 1px solid var(--line); background: var(--surface); padding: 9px 14px; border-radius: var(--r); cursor: pointer; text-decoration: none; color: var(--ink); font-weight: 600; font-size: 14px; display: inline-flex; align-items: center; gap: 6px; }
+.btn:hover { border-color: var(--ink); }
+.btn.primary { background: var(--sun); color: var(--sun-ink); border-color: var(--sun); }
+.btn.primary:disabled { opacity: .6; cursor: wait; }
+form { display: grid; gap: 12px; }
+.f2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+@media (max-width: 460px) { .f2 { grid-template-columns: 1fr; } }
+label { display: grid; gap: 4px; font-size: 13px; font-weight: 600; min-width: 0; }
+label small { font-weight: 400; color: var(--muted); }
+input, select { width: 100%; padding: 9px 10px; border: 1px solid var(--line); border-radius: var(--r); background: var(--bg); }
+input[type="color"] { padding: 2px; height: 40px; }
+.price { display: flex; justify-content: space-between; align-items: baseline; background: var(--bg); border-radius: var(--r); padding: 10px 12px; }
+.price b { font-family: var(--font-mono); font-size: 20px; font-weight: 500; }
+.note { font-size: 13px; color: var(--muted); }
+.err { background: var(--warn-bg); border-radius: var(--r); padding: 8px 12px; font-size: 13px; }
+.share { font-family: var(--font-mono); font-size: 12px; background: var(--bg); border-radius: var(--r); padding: 10px; overflow-wrap: anywhere; user-select: all; }
+
+@media (prefers-reduced-motion: no-preference) {
+  .slot, .crow, .btn, .pin .track { transition: border-color .15s, background-color .15s; }
+  .sheet { animation: up .2s ease-out; }
+  @keyframes up { from { transform: translateY(12px); opacity: .6; } to { transform: none; opacity: 1; } }
+}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header class="top">
+    <div class="brand">
+      <div class="edition">Founding Edition · 2026 <span class="mode" id="mode">Loading…</span></div>
+      <h1 class="wordmark">Pinoy Creator <span>Map</span></h1>
+      <p class="tag">Claim your spot in your city. Fans and brands find local creators here, from Vigan to Siargao.</p>
+    </div>
+    <div class="stats" id="stats" aria-live="polite"></div>
+  </header>
+
+  <section class="main">
+    <div class="mapcard">
+      <svg id="map" role="img" aria-label="Map of the Philippines with launch cities"></svg>
+      <div class="maplegend"><span><i style="background:var(--sun)"></i>claimed</span><span><i style="background:var(--surface);border:1px solid var(--line)"></i>open</span></div>
+    </div>
+    <article class="panel" id="panel" aria-live="polite"></article>
+  </section>
+
+  <section class="dir">
+    <div class="dir-h">
+      <h2>Creator Directory</h2>
+      <input class="search" id="q" type="search" placeholder="Search name, city, barangay…" aria-label="Search creators">
+    </div>
+    <div class="chips" id="chips"></div>
+    <div class="list" id="list"></div>
+  </section>
+
+  <footer>
+    <span>Only 12 launch cities are open. More cities and municipalities open in waves.</span>
+    <span>Slots are reserved for 24 hours while we review the claim and send the GCash / Maya payment link.</span>
+  </footer>
+</div>
+
+<div class="scrim" id="scrim" hidden>
+  <div class="sheet" id="sheet" role="dialog" aria-modal="true" aria-labelledby="sheet-title"></div>
+</div>
+
+<script>
+// ───────── config (publishable key is safe in the browser; the database uses row-level security) ─────────
+const CFG = {
+  url: "https://suzponlmxsihuxggduix.supabase.co",
+  key: "sb_publishable_djLljSVYnpTcwUU0s0qoFw_uiocesdf",
+  siteUrl: "https://johnramir251996.github.io/ramirfruityloopy/"
+};
+
+// Snapshot used when the live database can't be reached (e.g. an offline preview).
+const SNAPSHOT = {"places":[{"id":"vigan","name":"Vigan","province":"Ilocos Sur","region":"Region I","island_group":"Luzon","kind":"city","tier":"small","lat":17.5747,"lng":120.3869,"slot_count":10,"slot_price_php":400,"top_price_php":2000,"is_open":true},{"id":"baguio","name":"Baguio","province":"Benguet","region":"CAR","island_group":"Luzon","kind":"city","tier":"mid","lat":16.4023,"lng":120.596,"slot_count":25,"slot_price_php":1000,"top_price_php":5000,"is_open":true},{"id":"quezon-city","name":"Quezon City","province":"Metro Manila","region":"NCR","island_group":"Luzon","kind":"city","tier":"major","lat":14.676,"lng":121.0437,"slot_count":60,"slot_price_php":2000,"top_price_php":10000,"is_open":true},{"id":"manila","name":"Manila","province":"Metro Manila","region":"NCR","island_group":"Luzon","kind":"city","tier":"major","lat":14.5995,"lng":120.9842,"slot_count":60,"slot_price_php":2000,"top_price_php":10000,"is_open":true},{"id":"makati","name":"Makati","province":"Metro Manila","region":"NCR","island_group":"Luzon","kind":"city","tier":"major","lat":14.5547,"lng":121.0244,"slot_count":40,"slot_price_php":2500,"top_price_php":12000,"is_open":true},{"id":"iloilo-city","name":"Iloilo City","province":"Iloilo","region":"Region VI","island_group":"Visayas","kind":"city","tier":"mid","lat":10.7202,"lng":122.5621,"slot_count":25,"slot_price_php":1000,"top_price_php":5000,"is_open":true},{"id":"bacolod","name":"Bacolod","province":"Negros Occidental","region":"Region VI","island_group":"Visayas","kind":"city","tier":"mid","lat":10.6765,"lng":122.9509,"slot_count":25,"slot_price_php":1000,"top_price_php":5000,"is_open":true},{"id":"cebu-city","name":"Cebu City","province":"Cebu","region":"Region VII","island_group":"Visayas","kind":"city","tier":"major","lat":10.3157,"lng":123.8854,"slot_count":60,"slot_price_php":2000,"top_price_php":10000,"is_open":true},{"id":"general-luna","name":"General Luna (Siargao)","province":"Surigao del Norte","region":"Caraga","island_group":"Mindanao","kind":"municipality","tier":"small","lat":9.784,"lng":126.156,"slot_count":10,"slot_price_php":400,"top_price_php":2000,"is_open":true},{"id":"puerto-princesa","name":"Puerto Princesa","province":"Palawan","region":"MIMAROPA","island_group":"Luzon","kind":"city","tier":"mid","lat":9.7392,"lng":118.7353,"slot_count":25,"slot_price_php":1000,"top_price_php":5000,"is_open":true},{"id":"cagayan-de-oro","name":"Cagayan de Oro","province":"Misamis Oriental","region":"Region X","island_group":"Mindanao","kind":"city","tier":"mid","lat":8.4542,"lng":124.6319,"slot_count":25,"slot_price_php":1000,"top_price_php":5000,"is_open":true},{"id":"davao-city","name":"Davao City","province":"Davao del Sur","region":"Region XI","island_group":"Mindanao","kind":"city","tier":"major","lat":7.1907,"lng":125.4553,"slot_count":60,"slot_price_php":2000,"top_price_php":10000,"is_open":true}],"slots":[{"place_id":"quezon-city","slot_index":0,"status":"live","creator_id":"fc30878d"},{"place_id":"quezon-city","slot_index":3,"status":"live","creator_id":"9f2f1434"},{"place_id":"quezon-city","slot_index":7,"status":"live","creator_id":"e8026301"},{"place_id":"manila","slot_index":0,"status":"live","creator_id":"5b5ae6da"},{"place_id":"manila","slot_index":2,"status":"live","creator_id":"4fffe5a4"},{"place_id":"makati","slot_index":0,"status":"live","creator_id":"02350e4d"},{"place_id":"baguio","slot_index":0,"status":"live","creator_id":"ba4f34a2"},{"place_id":"cebu-city","slot_index":0,"status":"live","creator_id":"c4032874"},{"place_id":"cebu-city","slot_index":4,"status":"live","creator_id":"455d0b33"},{"place_id":"cebu-city","slot_index":9,"status":"live","creator_id":"27602772"},{"place_id":"iloilo-city","slot_index":0,"status":"live","creator_id":"49049664"},{"place_id":"bacolod","slot_index":0,"status":"live","creator_id":"c3356894"},{"place_id":"davao-city","slot_index":0,"status":"live","creator_id":"d19a7223"},{"place_id":"davao-city","slot_index":5,"status":"live","creator_id":"f5a3b64b"},{"place_id":"cagayan-de-oro","slot_index":0,"status":"live","creator_id":"080ae42c"},{"place_id":"general-luna","slot_index":0,"status":"live","creator_id":"80885000"}],"creators":[{"id":"fc30878d","display_name":"Kusina ni Lola Ising","niche":"Food","barangay":"Brgy. Teachers Village","follower_range":"100K-1M","tiktok_url":"https://www.tiktok.com/@demo_lolaising","color":"#E4572E","verified":true,"is_demo":true},{"id":"9f2f1434","display_name":"QC Commuter Diaries","niche":"Lifestyle","barangay":"Brgy. Cubao","follower_range":"10K-100K","tiktok_url":"https://www.tiktok.com/@demo_qccommute","color":"#2E86AB","verified":false,"is_demo":true},{"id":"e8026301","display_name":"Tito Tech PH","niche":"Tech","barangay":"Brgy. Diliman","follower_range":"10K-100K","youtube_url":"https://www.youtube.com/@demo_titotech","color":"#3D405B","verified":true,"is_demo":true},{"id":"5b5ae6da","display_name":"Gala sa Maynila","niche":"Travel","barangay":"Brgy. 659, Intramuros","follower_range":"1K-10K","tiktok_url":"https://www.tiktok.com/@demo_galamaynila","color":"#F2A541","verified":false,"is_demo":true},{"id":"4fffe5a4","display_name":"Binondo Bites","niche":"Food","barangay":"Brgy. 291, Binondo","follower_range":"10K-100K","tiktok_url":"https://www.tiktok.com/@demo_binondobites","color":"#C1292E","verified":true,"is_demo":true},{"id":"02350e4d","display_name":"Makati Hustle","niche":"Business","barangay":"Brgy. Poblacion","follower_range":"1K-10K","youtube_url":"https://www.youtube.com/@demo_makatihustle","color":"#1B998B","verified":false,"is_demo":true},{"id":"ba4f34a2","display_name":"Baguio Fog Walks","niche":"Travel","barangay":"Brgy. Session Road","follower_range":"10K-100K","tiktok_url":"https://www.tiktok.com/@demo_baguiofog","color":"#5C946E","verified":true,"is_demo":true},{"id":"c4032874","display_name":"Sugbo Eats","niche":"Food","barangay":"Brgy. Lahug","follower_range":"100K-1M","tiktok_url":"https://www.tiktok.com/@demo_sugboeats","color":"#E76F51","verified":true,"is_demo":true},{"id":"455d0b33","display_name":"Bisdak Gamer","niche":"Gaming","barangay":"Brgy. Mabolo","follower_range":"10K-100K","youtube_url":"https://www.youtube.com/@demo_bisdakgamer","color":"#6A4C93","verified":false,"is_demo":true},{"id":"27602772","display_name":"Cebu Island Hopper","niche":"Travel","barangay":"Brgy. Guadalupe","follower_range":"1K-10K","tiktok_url":"https://www.tiktok.com/@demo_islandhopper","color":"#2A9D8F","verified":false,"is_demo":true},{"id":"49049664","display_name":"Ilonggo Vlogs","niche":"Lifestyle","barangay":"Brgy. Jaro","follower_range":"10K-100K","tiktok_url":"https://www.tiktok.com/@demo_ilonggovlogs","color":"#F4A261","verified":true,"is_demo":true},{"id":"c3356894","display_name":"MassKara Moves","niche":"Dance","barangay":"Brgy. Mandalagan","follower_range":"1K-10K","tiktok_url":"https://www.tiktok.com/@demo_masskaramoves","color":"#D62246","verified":false,"is_demo":true},{"id":"d19a7223","display_name":"Durian Diaries","niche":"Food","barangay":"Brgy. Poblacion","follower_range":"100K-1M","tiktok_url":"https://www.tiktok.com/@demo_duriandiaries","color":"#8AB17D","verified":true,"is_demo":true},{"id":"f5a3b64b","display_name":"Davao Rides","niche":"Automotive","barangay":"Brgy. Buhangin","follower_range":"10K-100K","youtube_url":"https://www.youtube.com/@demo_davaorides","color":"#264653","verified":false,"is_demo":true},{"id":"080ae42c","display_name":"Kagay-anon Adventures","niche":"Adventure","barangay":"Brgy. Carmen","follower_range":"1K-10K","tiktok_url":"https://www.tiktok.com/@demo_kagayanon","color":"#E9C46A","verified":false,"is_demo":true},{"id":"80885000","display_name":"Surf Siargao Daily","niche":"Sports","barangay":"Brgy. Catangnan","follower_range":"10K-100K","tiktok_url":"https://www.tiktok.com/@demo_surfsiargao","color":"#00A6A6","verified":true,"is_demo":true}]};
+
+// ───────── pixel archipelago (simplified outlines, lon/lat) ─────────
+const POLYS = [
+  // Luzon
+  [[120.6,18.55],[121.0,18.62],[121.6,18.4],[122.2,18.5],[122.3,17.9],[122.2,17.2],[121.9,16.4],[121.6,15.8],[121.5,15.2],[121.65,14.7],[121.75,14.2],[122.1,14.1],[122.6,14.25],[123.1,14.05],[123.5,13.95],[123.95,13.75],[124.15,13.4],[124.05,13.0],[124.1,12.6],[123.9,12.6],[123.6,12.95],[123.3,13.2],[123.05,13.5],[122.7,13.7],[122.65,13.2],[122.4,13.5],[122.1,13.85],[121.6,13.9],[121.3,13.75],[121.0,13.6],[120.65,13.8],[120.6,14.25],[120.9,14.45],[120.97,14.6],[120.75,14.8],[120.6,14.55],[120.45,14.45],[120.3,14.8],[120.2,14.95],[120.0,15.35],[119.9,15.9],[119.9,16.4],[120.2,16.1],[120.32,16.6],[120.4,17.0],[120.38,17.6],[120.48,18.1]],
+  // Mindoro
+  [[120.3,13.5],[120.95,13.52],[121.2,13.42],[121.5,13.0],[121.5,12.65],[121.3,12.3],[121.0,12.2],[120.8,12.6],[120.6,13.2]],
+  // Catanduanes
+  [[124.1,13.6],[124.3,14.1],[124.45,13.95],[124.38,13.55]],
+  // Masbate
+  [[123.2,12.3],[123.6,12.45],[124.05,12.45],[123.9,12.0],[123.6,11.95],[123.35,12.05]],
+  // Samar
+  [[124.3,12.55],[125.0,12.55],[125.5,12.25],[125.55,11.6],[125.72,11.05],[125.4,11.1],[125.0,11.3],[124.85,11.75],[124.6,12.0],[124.3,12.3]],
+  // Leyte
+  [[124.4,11.55],[124.75,11.4],[125.0,11.25],[125.05,10.75],[125.25,10.3],[125.0,10.05],[124.8,10.15],[124.75,10.65],[124.6,11.0],[124.35,11.2]],
+  // Cebu
+  [[124.05,11.28],[124.03,10.55],[123.92,10.3],[123.6,9.8],[123.33,9.42],[123.4,9.95],[123.63,10.38],[123.75,10.8],[123.9,11.12]],
+  // Bohol
+  [[123.8,9.6],[124.6,9.85],[124.5,10.15],[124.0,10.15],[123.75,9.9]],
+  // Negros
+  [[123.2,11.0],[123.55,10.65],[123.3,10.2],[123.3,9.4],[123.05,9.05],[122.6,9.4],[122.4,9.75],[122.85,10.2],[122.95,10.7],[123.0,10.95]],
+  // Panay
+  [[121.9,11.95],[122.37,11.75],[122.75,11.6],[123.15,11.45],[123.0,11.05],[122.56,10.7],[122.0,10.45],[121.95,10.8],[121.95,11.4]],
+  // Palawan
+  [[119.45,11.45],[119.65,10.9],[119.4,10.2],[118.85,9.75],[118.2,9.15],[117.4,8.45],[117.2,8.35],[117.35,8.7],[118.0,9.35],[118.6,9.95],[119.05,10.65],[119.25,11.2]],
+  // Busuanga
+  [[119.9,12.05],[120.35,12.15],[120.2,11.85],[119.85,11.85]],
+  // Dinagat
+  [[125.55,10.2],[125.7,10.45],[125.68,9.95]],
+  // Mindanao
+  [[122.05,6.9],[122.15,7.35],[122.55,7.85],[123.0,8.2],[123.35,8.65],[123.8,8.55],[124.25,8.25],[124.6,8.5],[125.1,9.0],[125.45,9.05],[125.55,9.8],[125.95,9.4],[126.15,9.0],[126.4,8.2],[126.6,7.4],[126.25,6.9],[126.15,6.3],[125.8,7.0],[125.65,7.25],[125.4,6.85],[125.2,6.1],[125.45,5.6],[124.9,5.75],[124.25,6.25],[124.05,6.55],[124.2,7.2],[123.7,7.65],[123.45,7.8],[122.9,7.5],[122.6,7.75],[122.3,7.1]]
+];
+const DOTS = [ // small islands: [lon, lat, radius°]
+  [121.95,13.4,.17],[126.05,9.85,.13],[122.0,6.55,.2],[121.0,6.0,.18],[120.0,5.1,.15],[121.45,19.3,.08],[121.95,20.45,.07],
+  [121.95,14.8,.12],[122.05,12.4,.12],[122.55,12.4,.12],[123.55,9.2,.1],[124.7,9.18,.1],[122.6,10.55,.1],[124.5,11.6,.1],[120.1,13.8,.08],[123.75,11.2,.08]
+];
+
+const LON0 = 116.4, LON1 = 127.0, LAT0 = 4.4, LAT1 = 21.2, K = Math.cos(12 * Math.PI / 180);
+const W = 600, S = W / ((LON1 - LON0) * K), H = Math.round((LAT1 - LAT0) * S);
+const proj = (lon, lat) => [(lon - LON0) * K * S, (LAT1 - lat) * S];
+
+// Metro Manila cities are too close to tap, so their pins sit out at sea with a leader line.
+const OFFSET = { "quezon-city": [119.3, 15.35], "manila": [119.15, 14.6], "makati": [119.3, 13.85] };
+const LEFT_LABEL = new Set(["quezon-city", "manila", "makati", "general-luna"]);
+
+function inPoly(x, y, poly) {
+  let inside = false;
+  for (let i = 0, j = poly.length - 1; i < poly.length; j = i++) {
+    const [xi, yi] = poly[i], [xj, yj] = poly[j];
+    if ((yi > y) !== (yj > y) && x < (xj - xi) * (y - yi) / (yj - yi) + xi) inside = !inside;
+  }
+  return inside;
+}
+function landPath() {
+  const step = 0.1, px = step * K * S, gap = 1.1;
+  let d = "";
+  for (let lat = LAT1; lat > LAT0; lat -= step) {
+    for (let lon = LON0; lon < LON1; lon += step) {
+      const cx = lon + step / 2, cy = lat - step / 2;
+      const hit = POLYS.some(p => inPoly(cx, cy, p)) || DOTS.some(([x, y, r]) => (x - cx) ** 2 + (y - cy) ** 2 <= r * r);
+      if (hit) {
+        const [x, y] = proj(lon, lat);
+        const s = (px - gap).toFixed(2);
+        d += `M${x.toFixed(1)} ${y.toFixed(1)}h${s}v${s}h-${s}z`;
+      }
+    }
+  }
+  return d;
+}
+
+// ───────── state ─────────
+const state = { places: [], slots: new Map(), creators: new Map(), mode: "loading", sel: "quezon-city", niche: "All", q: "" };
+const key = (p, i) => p + ":" + i;
+const peso = n => "₱" + Number(n).toLocaleString("en-PH");
+const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+const safeUrl = u => (typeof u === "string" && /^https:\/\/(www\.|m\.)?(tiktok|youtube|facebook)\.com\//.test(u)) ? u : null;
+function initials(name) {
+  const w = String(name).replace(/[^\p{L}\p{N} ]/gu, "").split(/\s+/).filter(Boolean);
+  return ((w[0]?.[0] || "?") + (w[1]?.[0] || "")).toUpperCase();
+}
+function inkFor(hex) {
+  const n = parseInt(hex.slice(1), 16), r = n >> 16, g = (n >> 8) & 255, b = n & 255;
+  return (0.299 * r + 0.587 * g + 0.114 * b) > 150 ? "#1A1A1A" : "#FFFFFF";
+}
+function slotState(p, i) {
+  const s = state.slots.get(key(p, i));
+  if (!s) return { status: "open" };
+  if (s.status === "live") return { status: "live", creator: state.creators.get(s.creator_id) };
+  if (s.status === "held" && (!s.held_until || new Date(s.held_until) > new Date())) return { status: "held" };
+  return { status: "open" };
+}
+function counts(place) {
+  let live = 0, held = 0;
+  for (let i = 0; i < place.slot_count; i++) {
+    const st = slotState(place.id, i).status;
+    if (st === "live") live++; else if (st === "held") held++;
+  }
+  return { live, held, open: place.slot_count - live - held };
+}
+
+// ───────── data ─────────
+async function api(path, opts = {}) {
+  const ctl = new AbortController(); const t = setTimeout(() => ctl.abort(), 5000);
+  try {
+    const res = await fetch(CFG.url + "/rest/v1/" + path, {
+      ...opts, signal: ctl.signal,
+      headers: { apikey: CFG.key, "Content-Type": "application/json", ...(opts.headers || {}) }
+    });
+    const body = await res.json().catch(() => null);
+    if (!res.ok) throw new Error((body && (body.message || body.hint)) || ("Request failed (" + res.status + ")"));
+    return body;
+  } finally { clearTimeout(t); }
+}
+function ingest(d) {
+  state.places = d.places.slice().sort((a, b) => b.lat - a.lat);
+  state.slots = new Map(d.slots.map(s => [key(s.place_id, s.slot_index), s]));
+  state.creators = new Map(d.creators.map(c => [c.id, c]));
+}
+async function load() {
+  try {
+    const [places, slots, creators] = await Promise.all([
+      api("places?select=*&is_open=eq.true"),
+      api("slots?select=place_id,slot_index,status,creator_id,held_until&status=neq.available"),
+      api("creators?select=id,display_name,niche,barangay,follower_range,youtube_url,tiktok_url,facebook_url,color,verified,is_demo")
+    ]);
+    ingest({ places, slots, creators }); state.mode = "live";
+  } catch (e) {
+    ingest(SNAPSHOT); state.mode = "preview";
+  }
+  renderAll();
+}
+
+// ───────── render ─────────
+function renderAll() { renderHeader(); renderMap(); renderPanel(); renderDir(); }
+
+function renderHeader() {
+  const m = document.getElementById("mode");
+  m.textContent = state.mode === "live" ? "● Live" : state.mode === "loading" ? "Loading…" : "Preview data";
+  m.className = "mode" + (state.mode === "live" ? " live" : "");
+  let total = 0, claimed = 0;
+  state.places.forEach(p => { const c = counts(p); total += p.slot_count; claimed += c.live + c.held; });
+  const liveCreators = [...state.slots.values()].filter(s => s.status === "live").length;
+  document.getElementById("stats").innerHTML = [
+    [liveCreators, "creators on the map"],
+    [claimed + " / " + total, "slots claimed"],
+    [state.places.length, "cities open"]
+  ].map(([b, s]) => `<div class="stat"><b>${esc(b)}</b><small>${esc(s)}</small></div>`).join("");
+}
+
+let LAND = null;
+function renderMap() {
+  const svg = document.getElementById("map");
+  svg.setAttribute("viewBox", `0 0 ${W} ${H}`);
+  if (!LAND) LAND = landPath();
+  const R = { major: 13, mid: 10, small: 7.5 };
+  let pins = "";
+  state.places.forEach(p => {
+    const real = proj(p.lng, p.lat);
+    const pos = OFFSET[p.id] ? proj(...OFFSET[p.id]) : real;
+    const r = R[p.tier] || 8, c = counts(p), pct = (c.live + c.held) / p.slot_count, circ = 2 * Math.PI * r;
+    const left = LEFT_LABEL.has(p.id);
+    let lead = "";
+    if (OFFSET[p.id]) lead = `<line class="lead" x1="${pos[0]}" y1="${pos[1]}" x2="${real[0]}" y2="${real[1]}"/><circle class="realdot" cx="${real[0]}" cy="${real[1]}" r="2"/>`;
+    pins += `${lead}<g class="pin${p.id === state.sel ? " sel" : ""}" data-id="${esc(p.id)}" tabindex="0" role="button" aria-label="${esc(p.name)}, ${c.open} slots open" transform="translate(${pos[0].toFixed(1)} ${pos[1].toFixed(1)})">
+      <circle class="halo" r="${r + 5}"/>
+      <circle class="track" r="${r}" stroke-width="1"/>
+      <circle class="arc" r="${r - 2.5}" stroke-width="5" stroke-dasharray="${(pct * 2 * Math.PI * (r - 2.5)).toFixed(2)} 999" transform="rotate(-90)"/>
+      <circle class="core" r="2"/>
+      <text x="${left ? -(r + 6) : r + 6}" y="4" text-anchor="${left ? "end" : "start"}">${esc(p.name.replace(" (Siargao)", ""))}</text>
+    </g>`;
+  });
+  svg.innerHTML = `<path class="land" d="${LAND}"/>${pins}`;
+  svg.querySelectorAll(".pin").forEach(g => {
+    const go = () => { select(g.dataset.id, true); };
+    g.addEventListener("click", go);
+    g.addEventListener("keydown", e => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); go(); } });
+  });
+}
+
+function select(id, scroll) {
+  state.sel = id; renderMap(); renderPanel();
+  if (scroll && window.matchMedia("(max-width: 860px)").matches) document.getElementById("panel").scrollIntoView({ behavior: "smooth", block: "start" });
+}
+
+function avatar(c, size) {
+  const col = /^#[0-9a-f]{6}$/i.test(c.color) ? c.color : "#888888";
+  return `<div class="av" style="background:${col};color:${inkFor(col)};${size ? "font-size:" + size + "px" : ""}">${esc(initials(c.display_name))}</div>`;
+}
+
+function renderPanel() {
+  const p = state.places.find(x => x.id === state.sel) || state.places[0];
+  if (!p) return;
+  const c = counts(p), el = document.getElementById("panel");
+  const top = slotState(p.id, 0);
+  const topHtml = top.status === "live" && top.creator
+    ? `<button class="top1" data-slot="0">${avatar(top.creator, 30)}<div><div class="lbl">#1 creator of ${esc(p.name)}</div><strong>${esc(top.creator.display_name)}${top.creator.is_demo ? '<span class="demo">DEMO</span>' : ""}</strong><span class="meta">${esc(top.creator.niche)} · ${esc(top.creator.follower_range)} followers</span></div></button>`
+    : top.status === "held"
+      ? `<div class="top1" style="cursor:default"><div class="empty88">…</div><div><div class="lbl">#1 spot</div><strong>Reserved</strong><span class="meta">Someone is completing this claim.</span></div></div>`
+      : `<button class="top1" data-slot="0"><div class="empty88">#1</div><div><div class="lbl">#1 spot is open</div><strong>Be the #1 creator of ${esc(p.name)}</strong><span class="meta">${peso(p.top_price_php)} · biggest tile, top of the city page</span></div></button>`;
+  let grid = "";
+  for (let i = 1; i < p.slot_count; i++) {
+    const s = slotState(p.id, i);
+    if (s.status === "live" && s.creator) {
+      const col = /^#[0-9a-f]{6}$/i.test(s.creator.color) ? s.creator.color : "#888888";
+      grid += `<button class="slot live" data-slot="${i}" style="background:${col};color:${inkFor(col)}" aria-label="${esc(s.creator.display_name)}">${esc(initials(s.creator.display_name))}${s.creator.verified ? '<span class="v" aria-hidden="true">✓</span>' : ""}</button>`;
+    } else if (s.status === "held") {
+      grid += `<button class="slot held" disabled aria-label="Slot ${i + 1} reserved">held</button>`;
+    } else {
+      grid += `<button class="slot" data-slot="${i}" aria-label="Claim slot ${i + 1}">${i + 1}</button>`;
+    }
+  }
+  el.innerHTML = `
+    <div class="chead">
+      <div><h2>${esc(p.name)}</h2><div class="meta">${esc(p.province)} · ${esc(p.region)} · ${esc(p.island_group)}</div></div>
+      <span class="tier">${esc(p.tier === "major" ? "Major city" : p.tier === "mid" ? "Mid-size city" : p.kind === "municipality" ? "Municipality" : "Small city")}</span>
+    </div>
+    <div class="fill">
+      <div class="bar" role="img" aria-label="${c.live + c.held} of ${p.slot_count} slots claimed"><span class="live" style="width:${c.live / p.slot_count * 100}%"></span><span class="held" style="width:${c.held / p.slot_count * 100}%"></span></div>
+      <div class="row"><span>${c.live + c.held} of ${p.slot_count} slots claimed</span><span>${c.open} open · from ${peso(p.slot_price_php)}</span></div>
+    </div>
+    ${topHtml}
+    <div class="slots-h"><h3>Creator slots</h3><small>${peso(p.slot_price_php)} each · one-time</small></div>
+    <div class="grid">${grid}</div>
+    <div class="legend"><span><i style="background:var(--sun)"></i>Claimed</span><span><i style="border:1px dashed var(--line)"></i>Open, tap to claim</span><span><i style="background:repeating-linear-gradient(45deg,var(--line) 0 3px,transparent 3px 6px)"></i>Reserved</span></div>`;
+  el.querySelectorAll("[data-slot]").forEach(b => b.addEventListener("click", () => {
+    const i = +b.dataset.slot, s = slotState(p.id, i);
+    if (s.status === "live" && s.creator) openProfile(s.creator, p, i); else if (s.status === "open") openClaim(p, i);
+  }));
+}
+
+function placeOf(creatorId) {
+  for (const s of state.slots.values()) if (s.creator_id === creatorId && s.status === "live") {
+    return { place: state.places.find(p => p.id === s.place_id), index: s.slot_index };
+  }
+  return {};
+}
+
+function renderDir() {
+  const live = [...state.creators.values()].filter(c => placeOf(c.id).place);
+  const niches = ["All", ...[...new Set(live.map(c => c.niche))].sort()];
+  document.getElementById("chips").innerHTML = niches.map(n => `<button class="chip" aria-pressed="${n === state.niche}" data-n="${esc(n)}">${esc(n)}</button>`).join("");
+  document.querySelectorAll(".chip").forEach(b => b.onclick = () => { state.niche = b.dataset.n; renderDir(); });
+  const q = state.q.trim().toLowerCase();
+  const rows = live.filter(c => {
+    const { place } = placeOf(c.id);
+    if (state.niche !== "All" && c.niche !== state.niche) return false;
+    if (!q) return true;
+    return [c.display_name, c.niche, c.barangay, place.name, place.province].join(" ").toLowerCase().includes(q);
+  }).sort((a, b) => (placeOf(a.id).index - placeOf(b.id).index) || a.display_name.localeCompare(b.display_name));
+  document.getElementById("list").innerHTML = rows.length ? rows.map(c => {
+    const { place, index } = placeOf(c.id);
+    return `<button class="crow" data-id="${esc(c.id)}">${avatar(c, 15)}<div><b>${esc(c.display_name)}${c.is_demo ? '<span class="demo">DEMO</span>' : ""}</b><small>${index === 0 ? "#1 · " : ""}${esc(c.niche)} · ${esc(place.name)}</small></div></button>`;
+  }).join("") : `<div class="empty">No creators match that yet. Try another niche or city.</div>`;
+  document.querySelectorAll(".crow").forEach(b => b.onclick = () => {
+    const c = state.creators.get(b.dataset.id), { place, index } = placeOf(c.id);
+    openProfile(c, place, index);
+  });
+}
+
+// ───────── sheet ─────────
+const scrim = document.getElementById("scrim"), sheet = document.getElementById("sheet");
+let lastFocus = null;
+function openSheet(html) {
+  lastFocus = document.activeElement;
+  sheet.innerHTML = html; scrim.hidden = false;
+  sheet.querySelector(".x").onclick = closeSheet;
+  (sheet.querySelector("input, .btn, .x")).focus();
+}
+function closeSheet() { scrim.hidden = true; sheet.innerHTML = ""; lastFocus && lastFocus.focus && lastFocus.focus(); }
+scrim.addEventListener("click", e => { if (e.target === scrim) closeSheet(); });
+document.addEventListener("keydown", e => { if (e.key === "Escape" && !scrim.hidden) closeSheet(); });
+
+function openProfile(c, place, index) {
+  const links = [["TikTok", c.tiktok_url], ["YouTube", c.youtube_url], ["Facebook", c.facebook_url]]
+    .map(([n, u]) => safeUrl(u) ? `<a class="btn" href="${esc(safeUrl(u))}" target="_blank" rel="noopener noreferrer">${n} ↗</a>` : "").join("");
+  const title = index === 0 ? `#1 creator of ${place.name}` : `Creator in ${place.name}`;
+  const share = `I'm on the Pinoy Creator Map! ${title}. Find me and other local creators: ${CFG.siteUrl}`;
+  openSheet(`
+    <div class="sheet-h"><h3 id="sheet-title">${esc(title)}</h3><button class="x" aria-label="Close">×</button></div>
+    <div class="profile">${avatar(c)}<div>
+      <strong style="font-size:18px;display:block;overflow-wrap:anywhere">${esc(c.display_name)}${c.is_demo ? '<span class="demo">DEMO</span>' : ""}</strong>
+      ${c.verified ? '<div class="badge">✓ Verified channel</div>' : ""}
+      <div class="meta">${esc(c.niche)} · ${esc(c.follower_range)} followers</div>
+      <div class="meta">${esc(c.barangay ? c.barangay + ", " : "")}${esc(place.name)}, ${esc(place.province)}</div>
+    </div></div>
+    <div class="links">${links}</div>
+    <div><div class="note" style="margin-bottom:6px">Share text for this creator's badge</div><div class="share" id="sharetxt">${esc(share)}</div></div>
+    <div class="links"><button class="btn primary" id="copy">Copy share text</button></div>`);
+  document.getElementById("copy").onclick = async (e) => {
+    try { await navigator.clipboard.writeText(share); e.target.textContent = "Copied"; }
+    catch { const r = document.createRange(); r.selectNodeContents(document.getElementById("sharetxt")); const s = getSelection(); s.removeAllRanges(); s.addRange(r); e.target.textContent = "Selected, press copy"; }
+  };
+}
+
+function openClaim(place, index) {
+  const isTop = index === 0, price = isTop ? place.top_price_php : place.slot_price_php;
+  openSheet(`
+    <div class="sheet-h"><h3 id="sheet-title">${isTop ? "Claim the #1 spot" : "Claim slot " + (index + 1)} in ${esc(place.name)}</h3><button class="x" aria-label="Close">×</button></div>
+    <div class="price"><span>${isTop ? "#1 spot, one-time" : "Creator slot, one-time"}</span><b>${peso(price)}</b></div>
+    <form id="claim" novalidate>
+      <label>Channel or creator name<input id="f-name" required minlength="2" maxlength="40" autocomplete="nickname"></label>
+      <div class="f2">
+        <label>Niche<select id="f-niche">${["Food","Travel","Lifestyle","Tech","Gaming","Beauty","Fashion","Comedy","Dance","Music","Sports","Business","Education","Automotive","Adventure","Family","Pets"].map(n => `<option>${n}</option>`).join("")}</select></label>
+        <label>Followers<select id="f-fol">${["<1K","1K-10K","10K-100K","100K-1M","1M+"].map(n => `<option>${esc(n)}</option>`).join("")}</select></label>
+      </div>
+      <label>Barangay <small>optional</small><input id="f-brgy" maxlength="60" placeholder="Brgy. …"></label>
+      <label>TikTok link <small>at least one channel link</small><input id="f-tt" type="url" inputmode="url" placeholder="https://www.tiktok.com/@yourname"></label>
+      <label>YouTube link<input id="f-yt" type="url" inputmode="url" placeholder="https://www.youtube.com/@yourname"></label>
+      <label>Facebook page<input id="f-fb" type="url" inputmode="url" placeholder="https://www.facebook.com/yourpage"></label>
+      <div class="f2">
+        <label>Email <small>private, for payment link</small><input id="f-email" type="email" required maxlength="120" autocomplete="email"></label>
+        <label>Tile color<input id="f-color" type="color" value="#E4572E"></label>
+      </div>
+      <div class="err" id="f-err" hidden></div>
+      <button class="btn primary" type="submit" id="f-go">Reserve this slot for 24 hours</button>
+      <p class="note">No payment yet. We check your channel, then email a GCash, Maya or card payment link. Your logo goes live after payment.</p>
+    </form>`);
+  const $ = id => document.getElementById(id);
+  $("claim").addEventListener("submit", async e => {
+    e.preventDefault();
+    const v = {
+      name: $("f-name").value.trim(), niche: $("f-niche").value, fol: $("f-fol").value, brgy: $("f-brgy").value.trim(),
+      tt: $("f-tt").value.trim(), yt: $("f-yt").value.trim(), fb: $("f-fb").value.trim(), email: $("f-email").value.trim(), color: $("f-color").value
+    };
+    const err = msg => { $("f-err").textContent = msg; $("f-err").hidden = false; };
+    if (v.name.length < 2) return err("Enter your channel or creator name.");
+    if (!v.tt && !v.yt && !v.fb) return err("Add at least one channel link so we can verify you.");
+    if (v.tt && !/^https:\/\/(www\.)?tiktok\.com\/@[A-Za-z0-9_.]{1,40}\/?$/.test(v.tt)) return err("TikTok link should look like https://www.tiktok.com/@yourname");
+    if (v.yt && !/^https:\/\/(www\.|m\.)?youtube\.com\/[A-Za-z0-9@_./-]{1,100}$/.test(v.yt)) return err("YouTube link should look like https://www.youtube.com/@yourname");
+    if (v.fb && !/^https:\/\/(www\.|m\.)?facebook\.com\/[A-Za-z0-9_./-]{1,100}$/.test(v.fb)) return err("Facebook link should look like https://www.facebook.com/yourpage");
+    if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(v.email)) return err("Enter a valid email so we can send the payment link.");
+    $("f-go").disabled = true; $("f-go").textContent = "Reserving…"; $("f-err").hidden = true;
+    try {
+      if (state.mode === "live") {
+        await api("rpc/request_claim", { method: "POST", body: JSON.stringify({
+          p_place_id: place.id, p_slot_index: index, p_display_name: v.name, p_niche: v.niche, p_barangay: v.brgy,
+          p_follower_range: v.fol, p_youtube: v.yt, p_tiktok: v.tt, p_facebook: v.fb, p_email: v.email, p_color: v.color }) });
+      }
+      state.slots.set(key(place.id, index), { place_id: place.id, slot_index: index, status: "held", held_until: new Date(Date.now() + 864e5).toISOString() });
+      renderAll();
+      sheet.innerHTML = `
+        <div class="sheet-h"><h3 id="sheet-title">Slot reserved</h3><button class="x" aria-label="Close">×</button></div>
+        <p>${isTop ? "The #1 spot" : "Slot " + (index + 1)} in ${esc(place.name)} is held for you for 24 hours.</p>
+        <p class="note">Next: we review ${esc(v.name)}, then email ${esc(v.email)} a payment link for ${peso(price)}. ${state.mode === "live" ? "" : "This is preview data, so nothing was saved."}</p>
+        <div class="links"><button class="btn primary" id="done">Done</button></div>`;
+      sheet.querySelector(".x").onclick = closeSheet; $("done").onclick = closeSheet; $("done").focus();
+    } catch (ex) {
+      $("f-go").disabled = false; $("f-go").textContent = "Reserve this slot for 24 hours";
+      err(ex.name === "AbortError" ? "The connection timed out. Check your internet and try again." : ex.message);
+      if (/taken/i.test(ex.message)) load();
+    }
+  });
+}
+
+document.getElementById("q").addEventListener("input", e => { state.q = e.target.value; renderDir(); });
+ingest(SNAPSHOT); renderAll(); // instant first paint, then replace with live data
+load();
+</script>
+</body>
+</html>
